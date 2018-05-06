@@ -13,9 +13,11 @@ import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.plaf.FileChooserUI;
 
 import au.edu.img.scramble.RandomPixelSwappingScrambler;
 import au.edu.img.tools.RandomUtils;
+import au.edu.img.watermark.InsertGPWatermart;
 
 public class RunImageWatermarkProcess extends JFrame {
 
@@ -107,18 +109,17 @@ public class RunImageWatermarkProcess extends JFrame {
 		// // Steps
 		//
 		// // 1 Load the original image
-		// RandomPixelSwappingScrambler imageScrambler = new
-		// RandomPixelSwappingScrambler(imagePath, Integer.valueOf(rows),
-		// Integer.valueOf(cols));
-		//
+//		 RandomPixelSwappingScrambler imageScrambler = 
+//				 new RandomPixelSwappingScrambler(imagePath,"", Integer.valueOf(rows), Integer.valueOf(cols));
+//		//
 		// // 2 Scramble the original image
 		// imageScrambler.scrambleImage();
 		//
 		// // TODO : 3 Load image meta-data and show
 		//
 		// // 4 Add the watermark to scrambled image
-		// File markedImageFile = new
-		// InsertGPToImg(imageScrambler.getScrambeldImage().getAbsolutePath()).insertWatermark();
+		
+		 File markedImageFile = new InsertGPWatermart(RandomUtils.loadResourceFromClassPath("/res/lena.png")).insertWatermark();
 		//
 		// // TODO : 5 Extract the watermark
 		//

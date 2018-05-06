@@ -37,6 +37,10 @@ public class InsertGPWatermart {
 		LEFT_PATCH, RIGHT_PATCH;
 	}
 
+	public InsertGPWatermart(File file) {
+		readImage(file.getAbsolutePath());
+	}
+	
 	public InsertGPWatermart(String filePath) {
 		readImage(filePath);
 	}
@@ -265,7 +269,7 @@ public class InsertGPWatermart {
 					"Invalid input. Please provide a valid path to read the image files. \n\t e.g. /user/home/testImage.jpg");
 			return;
 		} else if (RandomUtils.isValidPath(args[0])) {
-			new InsertGPWatermart(args[0]).insertWatermark();
+			new InsertGPWatermart(RandomUtils.loadFile(args[0])).insertWatermark();
 
 		} else {
 			System.exit(500);

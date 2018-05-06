@@ -4,73 +4,129 @@ import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import javax.imageio.ImageIO;
 
+import au.edu.img.scramble.RandomPixelSwappingScrambler;
+import au.edu.img.tools.RandomUtils;
+
 public class ImageColorRatioTag {
 
-	public static void main(String[] args) throws IOException {
+	File imageSourceFile = null;
+	BufferedImage bufferdImageSourceFile = null;
+	int width = 0, heigth = 0;
+	int threshold = 0;
+	Set<RGBPixselPlaceHolder> uniqueColorSet = null;
 
-		// 1 Find the unique pix. and their ratio
+	List<RGBPlaceHolder> uniqueColors = new ArrayList<>();
 
-		ImageColorRatioTag imgTag = new ImageColorRatioTag();
+	public ImageColorRatioTag(String imagePath) throws IOException {
+		this.imageSourceFile = RandomUtils.loadFile(imagePath);
+		this.bufferdImageSourceFile = ImageIO.read(this.imageSourceFile);
+		this.width = bufferdImageSourceFile.getWidth();
+		this.heigth = bufferdImageSourceFile.getHeight();
+	}
 
-		File imgFile = new File("C:/Users/Aeron/Documents/workspace/s3397469_ImageProcessing/src/res/basic_colors.png");
+	public static void main(String[] args) throws Exception {
 
-		BufferedImage image = ImageIO.read(imgFile);
-		List<PlaceHolder> colorList = imgTag.extractPixs(image);
+		
+		if (null == args || args.length < 1) {
+			System.err.println(
+					"Invalid input. Please provide a valid path to read the image file. "
+							+ "\n\t e.g. /user/home/testImage.jpg");
+			return;
+		} else if (RandomUtils.isValidPath(args[0])) {
 
-		System.out.println("Image size : H =" + image.getHeight() + " x W =" + image.getWidth() + ", total pix's = "
-				+ colorList.size());
 
-		Map<PlaceHolder, Float> colorRatio = new HashMap<>();
-		Set<PlaceHolder> uniqueSet = new HashSet<PlaceHolder>(colorList);
-		for (PlaceHolder uniqueColor : uniqueSet) {
-			int pixFrequencyCount = Collections.frequency(colorList, uniqueColor);
-			uniqueColor.setFrequency(pixFrequencyCount);
+			ImageColorRatioTag imageTag = new ImageColorRatioTag(args[0]);
 
-			String frequencyRatio = calculateRatio(pixFrequencyCount, image.getHeight(), image.getWidth());
-			uniqueColor.setFrequencyRatio(frequencyRatio);
+			try {
+				imageTag.threshold = Integer.parseInt(args[1]);
+			} catch (Exception ex) {
+				imageTag.threshold = 20;
+				System.err.println("Provided Watarmark threshold is incorrect or empty, setting the default as 20%");
+			}
 
-//			System.out.println(ColorNameUtils.getColorNameFromRgb(uniqueColor.getColor().getRed(),
-//					uniqueColor.getColor().getGreen(), uniqueColor.getColor().getBlue()) + " = " + pixFrequencyCount);
-			colorRatio.put(uniqueColor, Float.valueOf(frequencyRatio));
+			imageTag.startProcess();
+		} else {
+			System.exit(500);
+		}
+		
+	}
+
+	private void startProcess() throws Exception {
+
+		// 1 Traverse the image, extract all the pixels with meta-data.
+		loadPixelMetaData(bufferdImageSourceFile);
+		System.out.println("Image size : H =" + getHeigth() + " x W =" + getWidth() + ", total unique pix's = "
+				+ uniqueColors.size());
+
+		// 2 Find pix's to change within the image based on T (threshold)
+		findPixelFrequencyWithinImage();
+
+		// 3 Randomly select the pix's and change the pix's
+		applyChangesToImage();
+	}
+
+	private void applyChangesToImage() {
+
+		// 1 select random pixs from list of unique pixs
+
+//		for (RGBPlaceHolder uniqueColor : uniqueColors) {
+		RGBPlaceHolder uniqueColor = uniqueColors.get(0);
+
+		if(uniqueColor!=null){
+//			// use of the Fisher–Yates shuffle with a Randomly permute
+			 Collections.shuffle( (List<?>) uniqueColor.getPixPositions(),
+			 RandomUtils.generateRadomUseingSeed(null));
+
+			// 3 Add or deduct the RGB
+			for (int index = 0; index < uniqueColor.getPixCountToBeChanged(); index++) {
+
+//				if (index % 3 == 0)
+					RandomUtils.modifyImageRGBValue(bufferdImageSourceFile, uniqueColor.getPixPositions().get(index),
+							RandomUtils.PixelChangeOperation.ADD, 1);
+//				else
+//					RandomUtils.modifyImageRGBValue(bufferdImageSourceFile, uniqueColor.getPixPositions().get(index),
+//							RandomUtils.PixelChangeOperation.SUBSTRACT, 5);
+			}
 		}
 
-		// 2 For each pix. group add a random number based on the percentage
+		// 3 Saving the new file
+		RandomUtils.saveBuffedImage(bufferdImageSourceFile, imageSourceFile);
 
-		Map<PlaceHolder, Integer> map = (Map<PlaceHolder, Integer>) sortByValues(colorRatio);
+	}
 
-		String fileName = imgFile.getParentFile().getAbsolutePath() + File.separator + imgFile.getName() + ".txt";
+	// Group each pix. based on the RGB color and find the frequency of
+	// appearance
+	private void findPixelFrequencyWithinImage() {
 
-		try (PrintWriter fileOut = new PrintWriter(fileName)) {
+		for (RGBPlaceHolder uniqueColor : uniqueColors) {
 
-			for (PlaceHolder c : map.keySet()) {
-				System.err.println(c + " - " + map.get(c));
-				fileOut.println(c + " - " + map.get(c));
-			}
-			fileOut.flush();
+			String frequencyRatio = calculatePixelAppearanceRatio(uniqueColor.getRepetitionCount());
+			uniqueColor.setFrequencyRatio(frequencyRatio);
+
+			double changRatio = RandomUtils.calculateRoundedChangeRatio(uniqueColor, 20);
+			uniqueColor.setPixCountToBeChanged(RandomUtils.calculateRoundedPixCountToChange(uniqueColor, changRatio));
+
+			System.out.println("\t" + String.format(
+					"" + "Color : {%d} , Total Pix. Count {%d} , RGB Frequency ratio {%s}%% , Pix. Change Ratio {%.2f}%% , Pix. Change count {%.2f}",
+					uniqueColor.grbValue, uniqueColor.getRepetitionCount(), uniqueColor.getRoundedFrequencyRatio(),
+					changRatio, uniqueColor.getPixCountToBeChanged()));
 		}
 
 	}
 
-	static String calculateRatio(int pixFrequencyCount, int imgHeight, int imgWidth) {
+	// Calculate the unique RGB color appearance ratio in the image.
+	private String calculatePixelAppearanceRatio(int pixFrequencyCount) {
 
-		float totPix = imgHeight * imgWidth;
+		float totPix = getHeigth() * getWidth();
 
 		if (pixFrequencyCount == 0 || pixFrequencyCount > totPix)
 			return "0";
@@ -78,126 +134,72 @@ public class ImageColorRatioTag {
 		float percentage = 100 * pixFrequencyCount / totPix;
 		// System.out.println(percentage + " = " + Math.round(percentage) +
 		// "%");
-		NumberFormat formatter = new DecimalFormat("0.00000000");
+		NumberFormat formatter = new DecimalFormat("0.00");
 		return (formatter.format(percentage));
 	}
 
-	private static Map<?, ?> sortByValues(Map map) {
-		List list = new LinkedList(map.entrySet());
+	// Browse through all the pixs in the image, wrap them in a place holder
+	// object with additional information.
+	// Add all the pix. information to a list containing all the pixcles.
+	private void loadPixelMetaData(BufferedImage image) throws IOException {
 
-		// Defined Custom Comparator here
-		Collections.sort(list, new Comparator() {
-			public int compare(Object o1, Object o2) {
-				return ((Comparable) ((Map.Entry) (o2)).getValue()).compareTo(((Map.Entry) (o1)).getValue());
+		// Path path =
+		// Paths.get("C:\\Users\\ul2d\\Documents\\workspace-sts-3.7.2.RELEASE\\db_img_blind\\src\\res\\output.txt");
+
+		// Use try-with-resource to get auto-closeable writer instance
+		// try (BufferedWriter writer = Files.newBufferedWriter(path)) {
+
+		for (int xAxis = 0; xAxis < this.width; xAxis++) {
+
+			for (int yAxis = 0; yAxis < this.heigth; yAxis++) {
+				Color color = new Color(image.getRGB(xAxis, yAxis));
+
+				// writer.write("\nReading X x Y : " + xAxis + " " + yAxis);
+
+				RGBPlaceHolder tmpRGBObject = new RGBPlaceHolder(xAxis, yAxis, color.getRGB());
+				int index = uniqueColors.indexOf(tmpRGBObject);
+				if (index >= 0) {
+					uniqueColors.get(index).addNewPixPosition(xAxis, yAxis);
+				} else
+					uniqueColors.add(tmpRGBObject);
+
+				// }
+
 			}
-		});
-
-		// Here I am copying the sorted list in HashMap
-		// using LinkedHashMap to preserve the insertion order
-		HashMap sortedHashMap = new LinkedHashMap();
-		for (Iterator it = list.iterator(); it.hasNext();) {
-			Map.Entry entry = (Map.Entry) it.next();
-			sortedHashMap.put(entry.getKey(), entry.getValue());
 		}
-		return sortedHashMap;
+
 	}
 
-	private List<PlaceHolder> extractPixs(BufferedImage image) {
-		int width = image.getWidth();
-		int height = image.getHeight();
-		int[][] result = new int[height][width];
-		List<PlaceHolder> colorList = new ArrayList<>();
-
-		for (int row = 0; row < height; row++) {
-			for (int col = 0; col < width; col++) {
-
-				Color color = new Color(image.getRGB(col, row));
-				colorList.add(new ImageColorRatioTag.PlaceHolder(row, col, color));
-			}
-		}
-
-		return colorList;
+	public File getImageSourceFile() {
+		return imageSourceFile;
 	}
 
-	class PlaceHolder {
-		Color color;
-		float pixFrequencyCount;
-		int frequency;
-		String frequencyRatio;
+	public void setImageSourceFile(File imageSourceFile) {
+		this.imageSourceFile = imageSourceFile;
+	}
 
-		int x, y;
+	public BufferedImage getBufferdImageSourceFile() {
+		return bufferdImageSourceFile;
+	}
 
-		PlaceHolder(int x, int y, final Color color) {
-			this.x = x;
-			this.y = y;
-			this.color = color;
-		}
+	public void setBufferdImageSourceFile(BufferedImage bufferdImageSourceFile) {
+		this.bufferdImageSourceFile = bufferdImageSourceFile;
+	}
 
-		public int getX() {
-			return x;
-		}
+	public int getWidth() {
+		return width;
+	}
 
-		public void setX(int x) {
-			this.x = x;
-		}
+	public void setWidth(int width) {
+		this.width = width;
+	}
 
-		public int getY() {
-			return y;
-		}
+	public int getHeigth() {
+		return heigth;
+	}
 
-		public void setY(int y) {
-			this.y = y;
-		}
-
-		public Color getColor() {
-			return color;
-		}
-
-		public void setColor(Color color) {
-			this.color = color;
-		}
-
-		public float getPixFrequencyCount() {
-			return pixFrequencyCount;
-		}
-
-		public void setPixFrequencyCount(float pixFrequencyCount) {
-			this.pixFrequencyCount = pixFrequencyCount;
-		}
-
-		public int getFrequency() {
-			return frequency;
-		}
-
-		public void setFrequency(int frequency) {
-			this.frequency = frequency;
-		}
-
-		public String getFrequencyRatio() {
-			return frequencyRatio;
-		}
-
-		public void setFrequencyRatio(String frequencyRatio) {
-			this.frequencyRatio = frequencyRatio;
-		}
-
-		public String toString() {
-			return this.getX() + " x " + this.getY() + " \t " + this.color.toString() + "\t\tF=" + frequency + "\tR="
-					+ frequencyRatio + "%";
-		}
-
-		public int hashCode() {
-			return this.color.hashCode();
-		}
-
-		public boolean equals(Object obj) {
-
-			if (obj instanceof PlaceHolder) {
-				PlaceHolder p = (PlaceHolder) obj;
-				return p.getColor().equals(this.getColor());
-			}
-			return false;
-		}
+	public void setHeigth(int heigth) {
+		this.heigth = heigth;
 	}
 
 }

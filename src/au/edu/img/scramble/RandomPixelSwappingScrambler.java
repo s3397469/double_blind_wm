@@ -60,7 +60,7 @@ public class RandomPixelSwappingScrambler {
 
 	}
 
-	RandomPixelSwappingScrambler(String originalImagePath, final String randomSeed, int rows, int cols) {
+	public RandomPixelSwappingScrambler(String originalImagePath, final String randomSeed, int rows, int cols) {
 
 		System.out.println("STARTING  Random Pixel Swapping Scrambler ....");
 
