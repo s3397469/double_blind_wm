@@ -30,10 +30,13 @@ public class RGBPlaceHolder {
 
 	String frequencyRatio;
 	double roundedFrequencyRatio;
+	double changRatio;
 
 	int x, y;
 
 	private double pixCountToBeChanged;
+
+	private double unchangedPixCount;
 
 	public void addNewPixPosition(int x, int y) {
 		pixPositions.add(String.valueOf(x) + "," + String.valueOf(y));
@@ -44,8 +47,8 @@ public class RGBPlaceHolder {
 		this.y = y;
 		this.grbValue = grbValue;
 		pixPositions = new ArrayList<String>();
-		
-		this.addNewPixPosition(this.x,this.y);
+
+		this.addNewPixPosition(this.x, this.y);
 	}
 
 	public int getX() {
@@ -115,11 +118,32 @@ public class RGBPlaceHolder {
 	}
 
 	public void setPixCountToBeChanged(double pixCountToBeChanged) {
-		this.pixCountToBeChanged= pixCountToBeChanged;
+		this.pixCountToBeChanged = pixCountToBeChanged;
+		this.unchangedPixCount = this.getRepetitionCount() - pixCountToBeChanged;
 	}
 
 	public double getPixCountToBeChanged() {
 		return pixCountToBeChanged;
 	}
 
+	public double getUnchangedPixCount() {
+		return unchangedPixCount;
+	}
+
+	@Override
+	public String toString() {
+
+		return String.format(
+				"Color : {%d} , RGB Frequency ratio {%s}%% , Pix. Change Ratio {%.2f}%% , Total Pixs. {%d} , Unchanged Pixs. {%.2f} , Pix. Change count {%.2f}",
+				grbValue, getRoundedFrequencyRatio(), this.changRatio, getRepetitionCount(), getUnchangedPixCount(),
+				getPixCountToBeChanged());
+	}
+
+	public double getChangRatio() {
+		return changRatio;
+	}
+
+	public void setChangRatio(double changRatio) {
+		this.changRatio = changRatio;
+	}
 }

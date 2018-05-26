@@ -24,9 +24,8 @@ import au.edu.img.watermark.RGBPlaceHolder;
 
 public class RandomUtils {
 
-	
-	static String RES_LOCATION="/res";
-	
+	static String RES_LOCATION = "/res";
+
 	public static enum PixelChangeOperation {
 		ADD, SUBSTRACT
 	}
@@ -38,7 +37,7 @@ public class RandomUtils {
 			System.out.println("Generating the Random for the seed : " + seed);
 		else {
 
-			System.out.println("Generating the Random ");
+//			System.out.println("Generating the Random ");
 			return new Random();
 		}
 
@@ -92,7 +91,7 @@ public class RandomUtils {
 	public static File loadResourceFromClassPath(String classPathFileName) {
 		Path path = null;
 		try {
-			path = Paths.get(RandomUtils.class.getResource(RES_LOCATION+File.separator+classPathFileName).toURI());
+			path = Paths.get(RandomUtils.class.getResource(RES_LOCATION + File.separator + classPathFileName).toURI());
 		} catch (Exception e) {
 			// e.printStackTrace();
 			return null;
@@ -125,74 +124,86 @@ public class RandomUtils {
 		return sortedHashMap;
 	}
 
-	public static double calculateRoundedPixCountToChange(RGBPlaceHolder colorGroup, final double changeRatio) {
-		return Math.ceil(colorGroup.getRepetitionCount() * changeRatio / 100);
+	public static double calculateRoundedPixCountToChange(RGBPlaceHolder colorGroup) {
+		return Math.ceil(colorGroup.getRepetitionCount() * colorGroup.getChangRatio() / 100);
 	}
-	
+
 	public static double calculateRoundedChangeRatio(RGBPlaceHolder colorGroup, final int changeRatio) {
 		return Math.ceil(colorGroup.getRoundedFrequencyRatio() * changeRatio / 100);
 	}
 
+	private static Color obtainNewColor(PixelChangeOperation operation, Color oldColor, int amount) {
+
+		Color newColor = null;
+
+		int r = -1, g = -1, b = -1;
+
+		// +
+		// if (PixelChangeOperation.ADD.equals(operation)) {
+		if (oldColor.getRed() + amount < 255)
+			r = oldColor.getRed() + amount;
+		else
+			r = oldColor.getRed() - amount;
+
+		if (oldColor.getGreen() + amount < 255)
+			g = oldColor.getGreen() + amount;
+		else
+			g = oldColor.getGreen() - amount;
+
+		if (oldColor.getBlue() + amount < 255)
+			b = oldColor.getBlue() + amount;
+		else
+			b = oldColor.getBlue() - amount;
+		// }
+
+		// -
+		// if (PixelChangeOperation.SUBSTRACT.equals(operation)) {
+		// if (oldColor.getRed() - amount >= 0)
+		// r = oldColor.getRed() - amount;
+		//
+		// if (oldColor.getGreen() - amount >= 0)
+		// g = oldColor.getGreen() - amount;
+		//
+		// if (oldColor.getBlue() - amount >= 0)
+		// b = oldColor.getBlue() - amount;
+		// }
+
+		if (r == -1 && g == -1 && b == -1)
+			return null;
+		else
+			newColor = new Color(r, g, b);
+
+		return newColor;
+	}
+
 	public static void modifyImageRGBValue(final BufferedImage bufferdImageSourceFile, int x, int y,
 			PixelChangeOperation operation, int amount) {
-		int rgbValue = bufferdImageSourceFile.getRGB(x, y);
-		
-//		Color c = new Color(bufferdImageSourceFile.getRGB(x, y));
-//
-//		StringBuffer buff = new StringBuffer();
-//		
-//		buff.append("R ").append(c.getRed());
-//		buff.append("G ").append(c.getGreen());
-//		buff.append("B ").append(c.getBlue());
-//
-//		System.out.println("X Y " + x  + "  " + y + " : RGB Value : "+ rgbValue + " " + buff);
-		
-//		if (rgbValue < 0)
-//			amount *= -1;
-//
-//		switch (operation) {
-//		case ADD:
-//			// Adding to RGB values
-//			rgbValue = rgbValue + amount;
-//			break;
-//		case SUBSTRACT:
-//			// Deduct to RGB values
-//			rgbValue = rgbValue - amount;
-//			break;
-//		}
-		
+
 		Color oldColor = new Color(bufferdImageSourceFile.getRGB(x, y));
 
-		System.out.println("X:" + x +" Y:"+ y+ " RGB : " + oldColor.getRGB());
-		Color newColor = new Color(oldColor.getRed() + 5, oldColor.getGreen() + 5, oldColor.getBlue() + 5);
-
+		System.out.println("X:" + x + " Y:" + y + " RGB : " + oldColor.getRGB());
+		Color newColor = obtainNewColor(operation, oldColor, amount);
 
 		bufferdImageSourceFile.setRGB(x, y, newColor.getRGB());
-		
-//		c = new Color(bufferdImageSourceFile.getRGB(x, y));
-//
-//		buff = new StringBuffer();
-//		
-//		buff.append("R ").append(c.getRed());
-//		buff.append("G ").append(c.getGreen());
-//		buff.append("B ").append(c.getBlue());
-//		
-		
-		
-//		System.out.print("\t ::: "+ ": RGB Value : "+ rgbValue + " " + buff);
-		
+
+		Color ndColor = new Color(bufferdImageSourceFile.getRGB(x, y));
+		System.out.println("\tX:" + x + " Y:" + y + " RGB : " + ndColor.getRGB());
+
 		bufferdImageSourceFile.flush();
 	}
 
-	public static void saveBuffedImage(final BufferedImage bufferdImageSourceFile, File imageSourceFile) {
+	public static File saveBuffedImage(final BufferedImage bufferdImageSourceFile, File imageSourceFile) {
 		try {
 
 			File markedImageFile = RandomUtils.generateOutputFile(imageSourceFile);
 			ImageIO.write(bufferdImageSourceFile, "png", markedImageFile);
-			System.out.println("Image with the watermark will be saved in : " + markedImageFile.getAbsolutePath());
+			// System.out.println("Image with the watermark will be saved in : "
+			// + markedImageFile.getAbsolutePath());
+			return markedImageFile;
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		return null;
 	}
 
 	public static void modifyImageRGBValue(BufferedImage bufferdImageSourceFile, String axisPosition,
@@ -202,5 +213,6 @@ public class RandomUtils {
 
 		modifyImageRGBValue(bufferdImageSourceFile, Integer.parseInt(values[0]), Integer.parseInt(values[1]), operation,
 				amount);
+
 	}
 }
